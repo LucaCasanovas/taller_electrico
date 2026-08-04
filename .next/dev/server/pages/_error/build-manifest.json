@@ -1,0 +1,22 @@
+{
+  "devFiles": [],
+  "ampDevFiles": [],
+  "polyfillFiles": [],
+  "lowPriorityFiles": [],
+  "rootMainFiles": [],
+  "pages": {
+    "/_error": [
+      "static/chunks/0hzq_next_dist_compiled_0ezm6rn._.js",
+      "static/chunks/0hzq_next_dist_shared_lib_0qyx-bg._.js",
+      "static/chunks/0hzq_next_dist_client_0o522ay._.js",
+      "static/chunks/0hzq_next_dist_03cnuao._.js",
+      "static/chunks/[next]_entry_page-loader_ts_0i-2-oc._.js",
+      "static/chunks/0hzq_react-dom_084vmxc._.js",
+      "static/chunks/0hzq_0kv5vy4._.js",
+      "static/chunks/[root-of-the-server]__0xkg2zt._.js",
+      "static/chunks/Documentos_electrical-panel-managerv2_pages__error_07xvfw~._.js",
+      "static/chunks/turbopack-Documentos_electrical-panel-managerv2_pages__error_0yp_.94._.js"
+    ]
+  },
+  "ampFirstPages": []
+}
