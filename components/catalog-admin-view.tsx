@@ -6,6 +6,7 @@ import { Archive, ImagePlus, Pencil, Plus, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { ViewHeader } from '@/components/view-header'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -98,6 +99,7 @@ export function CatalogAdminView({
   const [newCategoryName, setNewCategoryName] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
   const [archivingId, setArchivingId] = useState<string | null>(null)
+  const [itemToArchive, setItemToArchive] = useState<CatalogItem | null>(null)
 
   const FILTERS = ['Todos', ...categories.map((category) => category.name)]
 
@@ -188,9 +190,6 @@ export function CatalogAdminView({
   }
 
   async function handleArchive(item: CatalogItem) {
-    if (!confirm(`¿Eliminar "${item.name}" del catálogo? No se borrará de proyectos ya guardados.`)) {
-      return
-    }
     setArchivingId(item.id)
     try {
       await onArchive(item.id)
@@ -201,6 +200,7 @@ export function CatalogAdminView({
       })
     } finally {
       setArchivingId(null)
+      setItemToArchive(null)
     }
   }
 
@@ -440,7 +440,7 @@ export function CatalogAdminView({
                             size="icon-sm"
                             aria-label={`Eliminar ${item.name}`}
                             disabled={archivingId === item.id}
-                            onClick={() => handleArchive(item)}
+                            onClick={() => setItemToArchive(item)}
                           >
                             <Archive className="text-destructive" />
                           </Button>
@@ -454,6 +454,20 @@ export function CatalogAdminView({
           </CardContent>
         </Card>
       </main>
+      <ConfirmDialog
+        open={Boolean(itemToArchive)}
+        title="Eliminar componente"
+        description={
+          itemToArchive
+            ? `¿Querés eliminar "${itemToArchive.name}" del catálogo? No se borrará de los proyectos ya guardados.`
+            : ''
+        }
+        busy={Boolean(itemToArchive && archivingId === itemToArchive.id)}
+        onCancel={() => setItemToArchive(null)}
+        onConfirm={() => {
+          if (itemToArchive) void handleArchive(itemToArchive)
+        }}
+      />
     </div>
   )
 }

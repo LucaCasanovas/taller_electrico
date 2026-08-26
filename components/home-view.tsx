@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { ChevronRight, Eye, FileDown, FolderOpen, Layers, LogOut, PlusCircle, Settings2, Trash2, Zap } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -47,6 +49,20 @@ export function HomeView({
   onDeleteProject,
   onSignOut,
 }: HomeViewProps) {
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const [deletingProject, setDeletingProject] = useState(false)
+
+  async function confirmDeleteProject() {
+    if (!projectToDelete) return
+    setDeletingProject(true)
+    try {
+      await onDeleteProject(projectToDelete.id)
+      setProjectToDelete(null)
+    } finally {
+      setDeletingProject(false)
+    }
+  }
+
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-10 md:px-6 md:py-16">
       <div className="mb-6 flex items-center justify-end gap-3 text-sm text-muted-foreground">
@@ -197,7 +213,7 @@ export function HomeView({
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Eliminar ${project.name}`}
-                          onClick={() => onDeleteProject(project.id)}
+                          onClick={() => setProjectToDelete(project)}
                         >
                           <Trash2 className="text-destructive" />
                         </Button>
@@ -210,6 +226,18 @@ export function HomeView({
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={Boolean(projectToDelete)}
+        title="Eliminar tablero"
+        description={
+          projectToDelete
+            ? `¿Querés eliminar "${projectToDelete.name}"? Se archivará y dejará de aparecer en la lista.`
+            : ''
+        }
+        busy={deletingProject}
+        onCancel={() => setProjectToDelete(null)}
+        onConfirm={() => void confirmDeleteProject()}
+      />
     </main>
   )
 }

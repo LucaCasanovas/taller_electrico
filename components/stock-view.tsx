@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner'
 
 import { ViewHeader } from '@/components/view-header'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -112,6 +113,7 @@ export function StockView({
   const [newCategoryName, setNewCategoryName] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
   const [archivingId, setArchivingId] = useState<string | null>(null)
+  const [itemToArchive, setItemToArchive] = useState<StockItem | null>(null)
 
   const lowStock = stock.filter((item) => item.stock <= item.minStock)
 
@@ -205,7 +207,6 @@ export function StockView({
   }
 
   async function handleArchive(item: StockItem) {
-    if (!confirm(`¿Eliminar "${item.material}" del stock?`)) return
     setArchivingId(item.id)
     try {
       await onArchive(item.id)
@@ -216,6 +217,7 @@ export function StockView({
       })
     } finally {
       setArchivingId(null)
+      setItemToArchive(null)
     }
   }
 
@@ -523,7 +525,7 @@ export function StockView({
                               size="icon-sm"
                               aria-label={`Eliminar ${item.material}`}
                               disabled={archivingId === item.id}
-                              onClick={() => handleArchive(item)}
+                              onClick={() => setItemToArchive(item)}
                             >
                               <Archive className="text-destructive" />
                             </Button>
@@ -538,6 +540,20 @@ export function StockView({
           </CardContent>
         </Card>
       </main>
+      <ConfirmDialog
+        open={Boolean(itemToArchive)}
+        title="Eliminar insumo"
+        description={
+          itemToArchive
+            ? `¿Querés eliminar "${itemToArchive.material}" del stock?`
+            : ''
+        }
+        busy={Boolean(itemToArchive && archivingId === itemToArchive.id)}
+        onCancel={() => setItemToArchive(null)}
+        onConfirm={() => {
+          if (itemToArchive) void handleArchive(itemToArchive)
+        }}
+      />
     </div>
   )
 }
