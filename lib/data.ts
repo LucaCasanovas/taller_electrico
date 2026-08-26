@@ -44,7 +44,7 @@ export type ProjectPhoto = {
   id: string
   name: string
   url: string
-  file: File
+  file?: File
 }
 
 export type Project = {

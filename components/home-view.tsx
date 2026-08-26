@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, Eye, FileDown, FolderOpen, Layers, LogOut, PlusCircle, Settings2, Zap } from 'lucide-react'
+import { ChevronRight, Eye, FileDown, FolderOpen, Layers, LogOut, PlusCircle, Settings2, Trash2, Zap } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,7 @@ type HomeViewProps = {
   onManageCatalog: () => void
   onViewProject: (projectId: string) => void
   onExportProject: (projectId: string) => void
+  onDeleteProject: (projectId: string) => void
   onSignOut: () => void
 }
 
@@ -43,6 +44,7 @@ export function HomeView({
   onManageCatalog,
   onViewProject,
   onExportProject,
+  onDeleteProject,
   onSignOut,
 }: HomeViewProps) {
   return (
@@ -190,6 +192,14 @@ export function HomeView({
                         >
                           <FileDown data-icon="inline-start" />
                           Exportar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Eliminar ${project.name}`}
+                          onClick={() => onDeleteProject(project.id)}
+                        >
+                          <Trash2 className="text-destructive" />
                         </Button>
                       </div>
                     </TableCell>

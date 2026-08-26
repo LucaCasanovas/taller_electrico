@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useMemo, useState } from 'react'
-import { FileDown, PackageSearch, Save, Search, Trash2 } from 'lucide-react'
+import { ChevronDown, FileDown, PackageSearch, Save, Search, Trash2 } from 'lucide-react'
 
 import { CatalogCard } from '@/components/catalog-card'
 import { PhotoEvidence } from '@/components/photo-evidence'
@@ -31,6 +31,8 @@ import type { CatalogItem, ProjectLine, ProjectPhoto } from '@/lib/data'
 type CreateProjectViewProps = {
   catalog: CatalogItem[]
   catalogCategoryNames: string[]
+  initialPhotos?: ProjectPhoto[]
+  isEditing?: boolean
   initialName?: string
   initialClient?: string
   initialLines?: ProjectLine[]
@@ -40,8 +42,14 @@ type CreateProjectViewProps = {
     client: string
     lines: ProjectLine[]
     photoFiles: File[]
+    retainedPhotoIds: string[]
   }) => void
-  onExport: (name: string) => void
+  onExport: (payload: {
+    name: string
+    client: string
+    lines: ProjectLine[]
+    photos: ProjectPhoto[]
+  }) => void
   saving?: boolean
 }
 
@@ -51,6 +59,8 @@ export function CreateProjectView({
   initialName = '',
   initialClient = '',
   initialLines = [],
+  initialPhotos = [],
+  isEditing = false,
   onBack,
   onSave,
   onExport,
@@ -60,7 +70,8 @@ export function CreateProjectView({
   const [name, setName] = useState(initialName)
   const [client, setClient] = useState(initialClient)
   const [lines, setLines] = useState<ProjectLine[]>(initialLines)
-  const [photos, setPhotos] = useState<ProjectPhoto[]>([])
+  const [photos, setPhotos] = useState<ProjectPhoto[]>(initialPhotos)
+  const [showAvailableCatalog, setShowAvailableCatalog] = useState(!isEditing)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<string>('Todos')
   const [showNameError, setShowNameError] = useState(false)
@@ -69,6 +80,8 @@ export function CreateProjectView({
     const term = query.trim().toLowerCase()
     return catalogItems
       .filter((item) => {
+        const isSelected = lines.some((line) => line.itemId === item.id)
+        if (isEditing && !showAvailableCatalog && !isSelected) return false
         const matchesFilter = filter === 'Todos' || item.category === filter
         const matchesTerm =
           term.length === 0 ||
@@ -77,7 +90,7 @@ export function CreateProjectView({
         return matchesFilter && matchesTerm
       })
       .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-  }, [catalogItems, filter, query])
+  }, [catalogItems, filter, isEditing, lines, query, showAvailableCatalog])
 
   const totalItems = lines.reduce((sum, line) => sum + line.quantity, 0)
 
@@ -114,15 +127,16 @@ export function CreateProjectView({
       name: name.trim(),
       client: client.trim(),
       lines,
-      photoFiles: photos.map((photo) => photo.file),
+      photoFiles: photos.flatMap((photo) => (photo.file ? [photo.file] : [])),
+      retainedPhotoIds: photos.filter((photo) => !photo.file).map((photo) => photo.id),
     })
   }
 
   return (
     <div className="flex min-h-svh flex-col">
       <ViewHeader
-        eyebrow="Nuevo tablero"
-        title="Crear Proyecto"
+        eyebrow={isEditing ? 'Editar tablero' : 'Nuevo tablero'}
+        title={isEditing ? 'Editar Proyecto' : 'Crear Proyecto'}
         onBack={onBack}
       >
         <Field
@@ -184,6 +198,17 @@ export function CreateProjectView({
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
+            {isEditing ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-fit"
+                onClick={() => setShowAvailableCatalog((current) => !current)}
+              >
+                <ChevronDown data-icon="inline-start" />
+                {showAvailableCatalog ? 'Ocultar componentes disponibles' : 'Agregar componente'}
+              </Button>
+            ) : null}
           </div>
 
           {catalog.length === 0 ? (
@@ -199,7 +224,7 @@ export function CreateProjectView({
               </EmptyHeader>
             </Empty>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
               {catalog.map((item) => (
                 <CatalogCard
                   key={item.id}
@@ -289,7 +314,7 @@ export function CreateProjectView({
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-96 overflow-y-auto">
               <PhotoEvidence
                 photos={photos}
                 onAdd={(files) =>
@@ -332,7 +357,14 @@ export function CreateProjectView({
             <Button
               variant="outline"
               size="lg"
-              onClick={() => onExport(name.trim() || 'Proyecto sin nombre')}
+              onClick={() =>
+                onExport({
+                  name: name.trim() || 'Proyecto sin nombre',
+                  client: client.trim(),
+                  lines,
+                  photos,
+                })
+              }
             >
               <FileDown data-icon="inline-start" />
               Exportar (PDF/Excel)

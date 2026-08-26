@@ -4,6 +4,7 @@ import type {
   CatalogItem,
   Project,
   ProjectLine,
+  ProjectPhoto,
   StockCategory,
   StockItem,
   StockUnit,
@@ -268,6 +269,26 @@ export async function fetchProjects(): Promise<Project[]> {
   }))
 }
 
+function projectPhotoUrl(path: string) {
+  const supabase = createClient()
+  return supabase.storage.from('project-photos').getPublicUrl(path).data.publicUrl
+}
+
+export async function fetchProjectPhotos(projectId: string): Promise<ProjectPhoto[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('project_photos')
+    .select('id, storage_path, file_name')
+    .eq('project_id', projectId)
+    .order('created_at')
+  if (error) throw error
+  return data.map((row) => ({
+    id: row.id,
+    name: row.file_name ?? 'Foto del proyecto',
+    url: projectPhotoUrl(row.storage_path),
+  }))
+}
+
 export async function createProject(payload: {
   name: string
   client: string
@@ -313,6 +334,78 @@ export async function createProject(payload: {
   }
 
   return project.id as string
+}
+
+export async function updateProject(
+  projectId: string,
+  payload: {
+    name: string
+    client: string
+    lines: ProjectLine[]
+    photoFiles: File[]
+    retainedPhotoIds: string[]
+  },
+) {
+  const supabase = createClient()
+  const { data: userData } = await supabase.auth.getUser()
+  const userId = userData.user?.id
+
+  const { error: projectError } = await supabase
+    .from('projects')
+    .update({ name: payload.name, client: payload.client, updated_at: new Date().toISOString() })
+    .eq('id', projectId)
+  if (projectError) throw projectError
+
+  const { error: deleteLinesError } = await supabase
+    .from('project_lines')
+    .delete()
+    .eq('project_id', projectId)
+  if (deleteLinesError) throw deleteLinesError
+
+  if (payload.lines.length > 0) {
+    const { error: linesError } = await supabase.from('project_lines').insert(
+      payload.lines.map((line) => ({
+        project_id: projectId,
+        catalog_item_id: line.itemId,
+        quantity: line.quantity,
+      })),
+    )
+    if (linesError) throw linesError
+  }
+
+  const { data: currentPhotos, error: currentPhotosError } = await supabase
+    .from('project_photos')
+    .select('id, storage_path')
+    .eq('project_id', projectId)
+  if (currentPhotosError) throw currentPhotosError
+
+  const photosToDelete = (currentPhotos ?? []).filter(
+    (photo) => !payload.retainedPhotoIds.includes(photo.id),
+  )
+  if (photosToDelete.length > 0) {
+    const { error: deletePhotosError } = await supabase
+      .from('project_photos')
+      .delete()
+      .in('id', photosToDelete.map((photo) => photo.id))
+    if (deletePhotosError) throw deletePhotosError
+    const { error: deleteStorageError } = await supabase.storage
+      .from('project-photos')
+      .remove(photosToDelete.map((photo) => photo.storage_path))
+    if (deleteStorageError) throw deleteStorageError
+  }
+
+  for (const file of payload.photoFiles) {
+    const path = `${projectId}/${crypto.randomUUID()}-${file.name}`
+    const { error: uploadError } = await supabase.storage.from('project-photos').upload(path, file)
+    if (uploadError) throw uploadError
+    const { error: photoRowError } = await supabase.from('project_photos').insert({
+      project_id: projectId,
+      storage_path: path,
+      file_name: file.name,
+      uploaded_by: userId,
+    })
+    if (photoRowError) throw photoRowError
+  }
 }
 
 export async function archiveProject(id: string) {

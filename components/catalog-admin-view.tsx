@@ -34,7 +34,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { CatalogCategory, CatalogItem } from '@/lib/data'
 
-type FormState = {
+export type FormState = {
   id: string | null
   sku: string
   name: string
@@ -45,7 +45,7 @@ type FormState = {
   existingImage: string | null
 }
 
-const EMPTY_FORM: FormState = {
+export const EMPTY_FORM: FormState = {
   id: null,
   sku: '',
   name: '',
@@ -295,7 +295,7 @@ export function CatalogAdminView({
                       onChange={(event) =>
                         setForm((current) => ({ ...current, categoryId: event.target.value }))
                       }
-                      className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+                      className="h-8 w-full min-w-0 rounded-lg border border-input bg-white px-2.5 py-1 text-base text-black outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm [&>option]:bg-white [&>option]:text-black"
                     >
                       <option value="" disabled>
                         Elegí una categoría

@@ -8,6 +8,7 @@ import { LoginView } from '@/components/auth/login-view'
 import { CreateProjectView } from '@/components/create-project-view'
 import { HomeView } from '@/components/home-view'
 import { StockView } from '@/components/stock-view'
+import { exportProjectPdf } from '@/lib/export-project-pdf'
 import { createClient } from '@/lib/supabase/client'
 import {
   adjustStock,
@@ -21,10 +22,13 @@ import {
   fetchCatalogCategories,
   fetchCatalogItems,
   fetchProjects,
+  fetchProjectPhotos,
   fetchStockCategories,
   fetchStockItems,
+  archiveProject,
   signOut,
   updateCatalogItem,
+  updateProject,
   updateStockItem,
   uploadCatalogImage,
 } from '@/lib/supabase/queries'
@@ -33,6 +37,7 @@ import {
   type CatalogItem,
   type Project,
   type ProjectLine,
+  type ProjectPhoto,
   type StockCategory,
   type StockItem,
   totalUnits,
@@ -41,12 +46,14 @@ import {
 type View = 'home' | 'create' | 'stock' | 'catalog'
 
 type Draft = {
+  projectId?: string
   name: string
   client: string
   lines: ProjectLine[]
+  photos: ProjectPhoto[]
 }
 
-const EMPTY_DRAFT: Draft = { name: '', client: '', lines: [] }
+const EMPTY_DRAFT: Draft = { name: '', client: '', lines: [], photos: [] }
 
 export default function Page() {
   const [checkingSession, setCheckingSession] = useState(true)
@@ -119,20 +126,55 @@ export default function Page() {
     setView('create')
   }
 
-  function handleViewProject(projectId: string) {
+  async function handleViewProject(projectId: string) {
     const project = projects.find((entry) => entry.id === projectId)
     if (!project) return
+    const photos = await fetchProjectPhotos(projectId)
     openDraft({
+      projectId,
       name: project.name,
       client: project.client,
       lines: project.lines,
+      photos,
     })
   }
 
-  function handleExport(label: string) {
-    toast.success('Exportación generada', {
-      description: `Se preparó el listado de "${label}" en PDF y Excel.`,
-    })
+  async function handleExport(input: {
+    name: string
+    client: string
+    date?: string
+    lines: ProjectLine[]
+    photos: ProjectPhoto[]
+  }) {
+    try {
+      await exportProjectPdf({ ...input, catalog })
+      toast.success('PDF descargado', {
+        description: `Se exportó "${input.name || 'Proyecto sin nombre'}" correctamente.`,
+      })
+    } catch (error) {
+      toast.error('No se pudo generar el PDF', {
+        description: error instanceof Error ? error.message : 'Intentá de nuevo.',
+      })
+    }
+  }
+
+  async function handleExportProject(projectId: string) {
+    try {
+      const project = projects.find((entry) => entry.id === projectId)
+      if (!project) return
+      const photos = await fetchProjectPhotos(projectId)
+      await handleExport({
+        name: project.name,
+        client: project.client,
+        date: project.date,
+        lines: project.lines,
+        photos,
+      })
+    } catch (error) {
+      toast.error('No se pudo preparar el PDF', {
+        description: error instanceof Error ? error.message : 'Intentá de nuevo.',
+      })
+    }
   }
 
   async function handleSave(payload: {
@@ -140,15 +182,20 @@ export default function Page() {
     client: string
     lines: ProjectLine[]
     photoFiles: File[]
+    retainedPhotoIds: string[]
   }) {
     setSaving(true)
     try {
-      await createProject(payload)
+      if (draft.projectId) {
+        await updateProject(draft.projectId, payload)
+      } else {
+        await createProject(payload)
+      }
       const refreshed = await fetchProjects()
       setProjects(refreshed)
       setDraft(EMPTY_DRAFT)
       setView('home')
-      toast.success('Proyecto guardado', {
+      toast.success(draft.projectId ? 'Proyecto actualizado' : 'Proyecto guardado', {
         description: `${payload.name} · ${totalUnits(payload.lines)} componentes · ${payload.photoFiles.length} foto${payload.photoFiles.length === 1 ? '' : 's'}.`,
       })
     } catch (error) {
@@ -268,6 +315,18 @@ export default function Page() {
     setView('home')
   }
 
+  async function handleDeleteProject(projectId: string) {
+    try {
+      await archiveProject(projectId)
+      setProjects((current) => current.filter((project) => project.id !== projectId))
+      toast.success('Proyecto eliminado')
+    } catch (error) {
+      toast.error('No se pudo eliminar el proyecto', {
+        description: error instanceof Error ? error.message : 'Intentá de nuevo.',
+      })
+    }
+  }
+
   if (checkingSession) {
     return (
       <main className="flex min-h-svh items-center justify-center">
@@ -297,9 +356,11 @@ export default function Page() {
         initialName={draft.name}
         initialClient={draft.client}
         initialLines={draft.lines}
+        initialPhotos={draft.photos}
+        isEditing={Boolean(draft.projectId)}
         onBack={() => setView('home')}
         onSave={handleSave}
-        onExport={handleExport}
+        onExport={(input) => void handleExport(input)}
         saving={saving}
       />
     )
@@ -343,9 +404,8 @@ export default function Page() {
       onOpenStock={() => setView('stock')}
       onManageCatalog={() => setView('catalog')}
       onViewProject={handleViewProject}
-      onExportProject={(projectId) =>
-        handleExport(projects.find((entry) => entry.id === projectId)?.name ?? 'Proyecto')
-      }
+      onExportProject={(projectId) => void handleExportProject(projectId)}
+      onDeleteProject={handleDeleteProject}
       onSignOut={handleSignOut}
     />
   )
