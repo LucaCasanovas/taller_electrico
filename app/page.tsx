@@ -8,6 +8,7 @@ import { LoginView } from '@/components/auth/login-view'
 import { CreateProjectView } from '@/components/create-project-view'
 import { HomeView } from '@/components/home-view'
 import { StockView } from '@/components/stock-view'
+import { WorkerStockView } from '@/components/worker-stock-view'
 import { exportProjectPdf } from '@/lib/export-project-pdf'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -43,7 +44,7 @@ import {
   totalUnits,
 } from '@/lib/data'
 
-type View = 'home' | 'create' | 'stock' | 'catalog'
+type View = 'home' | 'create' | 'stock' | 'catalog' | 'worker'
 
 type Draft = {
   projectId?: string
@@ -277,6 +278,7 @@ export default function Page() {
     unit: StockItem['unit']
     stock: number
     minStock: number
+    idealStock: number | null
   }) {
     await createStockItem(input)
     setStock(await fetchStockItems())
@@ -290,6 +292,7 @@ export default function Page() {
       categoryId: string
       unit: StockItem['unit']
       minStock: number
+      idealStock: number | null
     },
   ) {
     await updateStockItem(id, input)
@@ -395,6 +398,17 @@ export default function Page() {
     )
   }
 
+  if (view === 'worker') {
+    return (
+      <WorkerStockView
+        stock={stock}
+        categories={stockCategories}
+        onAdjust={handleAdjustStock}
+        onBack={() => setView('home')}
+      />
+    )
+  }
+
   return (
     <HomeView
       projects={projects}
@@ -402,6 +416,7 @@ export default function Page() {
       userEmail={userEmail}
       onCreateProject={() => openDraft(EMPTY_DRAFT)}
       onOpenStock={() => setView('stock')}
+      onOpenWorkerStock={() => setView('worker')}
       onManageCatalog={() => setView('catalog')}
       onViewProject={handleViewProject}
       onExportProject={(projectId) => void handleExportProject(projectId)}

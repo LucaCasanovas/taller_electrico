@@ -160,7 +160,7 @@ export async function fetchStockItems(): Promise<StockItem[]> {
   const { data, error } = await supabase
     .from('stock_items')
     .select(
-      'id, sku, material, unit, stock, min_stock, archived, category_id, stock_categories(name)',
+      'id, sku, material, unit, stock, min_stock, ideal_stock, archived, category_id, stock_categories(name)',
     )
     .eq('archived', false)
     .order('material')
@@ -174,6 +174,7 @@ export async function fetchStockItems(): Promise<StockItem[]> {
     stock: Number(row.stock),
     unit: row.unit as StockUnit,
     minStock: Number(row.min_stock),
+    idealStock: row.ideal_stock === null ? null : Number(row.ideal_stock),
     archived: row.archived,
   }))
 }
@@ -185,6 +186,7 @@ export async function createStockItem(input: {
   unit: StockUnit
   stock: number
   minStock: number
+  idealStock?: number | null
 }) {
   const supabase = createClient()
   const { data: userData } = await supabase.auth.getUser()
@@ -195,6 +197,7 @@ export async function createStockItem(input: {
     unit: input.unit,
     stock: input.stock,
     min_stock: input.minStock,
+    ideal_stock: input.idealStock ?? null,
     created_by: userData.user?.id,
   })
   if (error) throw error
@@ -208,6 +211,7 @@ export async function updateStockItem(
     categoryId: string
     unit: StockUnit
     minStock: number
+    idealStock: number | null
   }>,
 ) {
   const supabase = createClient()
@@ -219,6 +223,7 @@ export async function updateStockItem(
       ...(input.categoryId !== undefined ? { category_id: input.categoryId } : {}),
       ...(input.unit !== undefined ? { unit: input.unit } : {}),
       ...(input.minStock !== undefined ? { min_stock: input.minStock } : {}),
+      ...(input.idealStock !== undefined ? { ideal_stock: input.idealStock } : {}),
     })
     .eq('id', id)
   if (error) throw error
@@ -239,6 +244,16 @@ export async function adjustStock(itemId: string, delta: number, reason?: string
     p_item_id: itemId,
     p_delta: delta,
     p_reason: reason ?? null,
+  })
+  if (error) throw error
+}
+
+/** Consumo desde /trabajador (anon). Solo resta; ver supabase/04_worker_anon_access.sql */
+export async function consumeStockAsWorker(itemId: string, quantity: number) {
+  const supabase = createClient()
+  const { error } = await supabase.rpc('worker_consume_stock', {
+    p_item_id: itemId,
+    p_quantity: Math.abs(quantity),
   })
   if (error) throw error
 }

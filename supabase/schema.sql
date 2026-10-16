@@ -73,6 +73,7 @@ create table stock_items (
   unit text not null check (unit in ('Metros', 'Rollos', 'Unidades', 'Bolsas')),
   stock numeric not null default 0,
   min_stock numeric not null default 0,
+  ideal_stock numeric check (ideal_stock is null or ideal_stock >= 0),
   archived boolean not null default false,
   created_by uuid references profiles (id),
   created_at timestamptz not null default now()

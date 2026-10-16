@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, Eye, FileDown, FolderOpen, Layers, LogOut, PlusCircle, Settings2, Trash2, Zap } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, Eye, ExternalLink, FileDown, FolderOpen, Layers, LogOut, PackageCheck, PlusCircle, Settings2, Trash2, Zap } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Empty,
@@ -30,6 +32,7 @@ type HomeViewProps = {
   userEmail?: string
   onCreateProject: () => void
   onOpenStock: () => void
+  onOpenWorkerStock: () => void
   onManageCatalog: () => void
   onViewProject: (projectId: string) => void
   onExportProject: (projectId: string) => void
@@ -43,6 +46,7 @@ export function HomeView({
   userEmail,
   onCreateProject,
   onOpenStock,
+  onOpenWorkerStock,
   onManageCatalog,
   onViewProject,
   onExportProject,
@@ -135,7 +139,18 @@ export function HomeView({
         </button>
       </div>
 
-      <div className="mt-4 flex justify-center">
+      <div className="mt-4 flex flex-col items-center justify-center gap-2 sm:flex-row sm:flex-wrap">
+        <Button variant="outline" size="sm" onClick={onOpenWorkerStock}>
+          <PackageCheck data-icon="inline-start" />
+          Vista trabajadores (panel)
+        </Button>
+        <Link
+          href="/trabajador"
+          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+        >
+          <ExternalLink data-icon="inline-start" />
+          Pantalla exclusiva trabajadores
+        </Link>
         <Button variant="ghost" size="sm" onClick={onManageCatalog}>
           <Settings2 data-icon="inline-start" />
           Administrar Catálogo de Componentes

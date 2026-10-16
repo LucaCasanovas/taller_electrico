@@ -55,6 +55,7 @@ type FormState = {
   unit: StockUnit
   stock: string
   minStock: string
+  idealStock: string
 }
 
 const EMPTY_FORM: FormState = {
@@ -65,6 +66,7 @@ const EMPTY_FORM: FormState = {
   unit: 'Unidades',
   stock: '',
   minStock: '',
+  idealStock: '',
 }
 
 type StockViewProps = {
@@ -78,6 +80,7 @@ type StockViewProps = {
     unit: StockUnit
     stock: number
     minStock: number
+    idealStock: number | null
   }) => Promise<void>
   onUpdate: (
     id: string,
@@ -87,12 +90,15 @@ type StockViewProps = {
       categoryId: string
       unit: StockUnit
       minStock: number
+      idealStock: number | null
     },
   ) => Promise<void>
   onArchive: (id: string) => Promise<void>
   onCreateCategory: (name: string) => Promise<StockCategory>
   onBack: () => void
 }
+
+type StockMode = 'materials' | 'replenish'
 
 export function StockView({
   stock,
@@ -107,6 +113,7 @@ export function StockView({
   const FILTERS = ['Todos', ...categories.map((category) => category.name)]
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<string>('Todos')
+  const [stockMode, setStockMode] = useState<StockMode>('materials')
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [savingForm, setSavingForm] = useState(false)
@@ -143,6 +150,7 @@ export function StockView({
       unit: item.unit,
       stock: String(item.stock),
       minStock: String(item.minStock),
+          idealStock: item.idealStock === null ? '' : String(item.idealStock),
     })
     setFormOpen(true)
   }
@@ -183,6 +191,7 @@ export function StockView({
           categoryId: form.categoryId,
           unit: form.unit,
           minStock: Number(form.minStock) || 0,
+          idealStock: form.idealStock.trim() === '' ? null : Number(form.idealStock),
         })
         toast.success('Insumo actualizado', { description: form.material.trim() })
       } else {
@@ -193,6 +202,7 @@ export function StockView({
           unit: form.unit,
           stock: Number(form.stock) || 0,
           minStock: Number(form.minStock) || 0,
+          idealStock: form.idealStock.trim() === '' ? null : Number(form.idealStock),
         })
         toast.success('Insumo agregado', { description: form.material.trim() })
       }
@@ -267,6 +277,74 @@ export function StockView({
             </CardContent>
           </Card>
         </div>
+
+        <ToggleGroup
+          value={[stockMode]}
+          onValueChange={(value) => setStockMode((value[0] as StockMode) ?? 'materials')}
+          variant="outline"
+          className="w-fit"
+        >
+          <ToggleGroupItem value="materials">Lista de materiales</ToggleGroupItem>
+          <ToggleGroupItem value="replenish">
+            Reponer
+            <Badge variant="destructive" className="ml-1 font-mono">
+              {lowStock.length}
+            </Badge>
+          </ToggleGroupItem>
+        </ToggleGroup>
+
+        {stockMode === 'replenish' ? (
+          <Card>
+            <CardHeader className="border-b">
+              <CardTitle className="flex items-center justify-between gap-2">
+                Materiales para reponer
+                <Badge variant="destructive" className="font-mono">
+                  {lowStock.length}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-0">
+              {lowStock.length === 0 ? (
+                <p className="px-4 py-6 text-sm text-muted-foreground">
+                  No hay materiales pendientes de reposición.
+                </p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {lowStock.map((item) => {
+                    const quantityToOrder =
+                      item.idealStock === null
+                        ? null
+                        : Math.max(0, item.idealStock - item.stock)
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-pretty">{item.material}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Actual: {item.stock} {item.unit} · Mínimo: {item.minStock}{' '}
+                            {item.unit} · Ideal:{' '}
+                            {item.idealStock === null ? 'sin definir' : `${item.idealStock} ${item.unit}`}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-left sm:text-right">
+                          <p className="text-xs text-muted-foreground">Pedir</p>
+                          <p className="font-mono font-semibold tabular-nums">
+                            {quantityToOrder === null
+                              ? 'Definir cantidad ideal'
+                              : `${quantityToOrder} ${item.unit}`}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <>
 
         {formOpen ? (
           <Card>
@@ -384,6 +462,19 @@ export function StockView({
                     value={form.minStock}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, minStock: event.target.value }))
+                    }
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="stock-ideal">Stock ideal (opcional)</FieldLabel>
+                  <Input
+                    id="stock-ideal"
+                    type="number"
+                    min={0}
+                    placeholder="Ej: 5"
+                    value={form.idealStock}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, idealStock: event.target.value }))
                     }
                   />
                 </Field>
@@ -539,6 +630,8 @@ export function StockView({
             )}
           </CardContent>
         </Card>
+          </>
+        )}
       </main>
       <ConfirmDialog
         open={Boolean(itemToArchive)}

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."
@@ -33,6 +33,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "postcss": "^8.5",
+    "supabase": "^2.116.0",
     "tailwindcss": "^4.3.3",
     "typescript": "5.7.3"
   },

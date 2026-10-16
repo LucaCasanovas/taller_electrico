@@ -1,0 +1,2 @@
+[functions.send-stock-notification]
+verify_jwt = false

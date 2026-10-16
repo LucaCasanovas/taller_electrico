@@ -32,6 +32,7 @@ export type StockItem = {
   stock: number
   unit: StockUnit
   minStock: number
+  idealStock: number | null
   archived: boolean
 }
 
